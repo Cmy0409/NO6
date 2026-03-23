@@ -29,6 +29,7 @@ import com.cl.entity.view.JiuzhentongzhiView;
 
 import com.cl.service.JiuzhentongzhiService;
 import com.cl.service.TokenService;
+import com.cl.service.NoticeService;
 import com.cl.utils.PageUtils;
 import com.cl.utils.R;
 import com.cl.utils.MPUtil;
@@ -47,6 +48,9 @@ import com.cl.utils.CommonUtil;
 public class JiuzhentongzhiController {
     @Autowired
     private JiuzhentongzhiService jiuzhentongzhiService;
+    
+    @Autowired
+    private NoticeService noticeService;
 
 
 
@@ -189,6 +193,20 @@ public class JiuzhentongzhiController {
     public R delete(@RequestBody Long[] ids){
         jiuzhentongzhiService.deleteBatchIds(Arrays.asList(ids));
         return R.ok();
+    }
+    
+    /**
+     * 重试发送通知
+     */
+    @RequestMapping("/retry")
+    @SysLog("重试发送通知")
+    public R retry(@RequestParam Long id){
+        boolean success = noticeService.retrySendNotice(id);
+        if(success) {
+            return R.ok("重试发送成功");
+        } else {
+            return R.error("重试发送失败");
+        }
     }
     
 	
