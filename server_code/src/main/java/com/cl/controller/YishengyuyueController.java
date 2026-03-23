@@ -29,6 +29,9 @@ import com.cl.entity.view.YishengyuyueView;
 
 import com.cl.service.YishengyuyueService;
 import com.cl.service.TokenService;
+import com.cl.service.NoticeService;
+import com.cl.entity.JiuzhentongzhiEntity;
+import com.cl.service.JiuzhentongzhiService;
 import com.cl.utils.PageUtils;
 import com.cl.utils.R;
 import com.cl.utils.MPUtil;
@@ -47,6 +50,12 @@ import com.cl.utils.CommonUtil;
 public class YishengyuyueController {
     @Autowired
     private YishengyuyueService yishengyuyueService;
+    
+    @Autowired
+    private NoticeService noticeService;
+    
+    @Autowired
+    private JiuzhentongzhiService jiuzhentongzhiService;
 
 
 
@@ -184,15 +193,60 @@ public class YishengyuyueController {
     @Transactional
     @SysLog("审核医生预约")
     public R update(@RequestBody Long[] ids, @RequestParam String sfsh, @RequestParam String shhf){
+        System.out.println("[审核] ID: " + Arrays.toString(ids) + ", 状态: " + sfsh);
         List<YishengyuyueEntity> list = new ArrayList<YishengyuyueEntity>();
         for(Long id : ids) {
             YishengyuyueEntity yishengyuyue = yishengyuyueService.selectById(id);
             yishengyuyue.setSfsh(sfsh);
             yishengyuyue.setShhf(shhf);
             list.add(yishengyuyue);
+            
+            // 如果审核通过，立即发送所有后续提醒
+            if("是".equals(sfsh)) {
+                System.out.println("[审核] 预约 " + yishengyuyue.getYuyuebianhao() + " 通过，发送通知...");
+                sendAllNotifications(yishengyuyue);
+            }
         }
         yishengyuyueService.updateBatchById(list);
+        System.out.println("[审核] 完成");
         return R.ok();
+    }
+    
+    /**
+     * 发送所有后续提醒
+     */
+    private void sendAllNotifications(YishengyuyueEntity yishengyuyue) {
+        // 1. 发送预约成功通知
+        sendNotification(yishengyuyue, "预约成功通知", "您的预约已审核通过，请按时就诊。");
+        
+        // 2. 发送就诊前提醒（假设就诊前一天）
+        sendNotification(yishengyuyue, "就诊前提醒", "您明天有就诊安排，请提前做好准备。");
+        
+        // 3. 发送就诊当天提醒
+        sendNotification(yishengyuyue, "就诊当天提醒", "今天是您的就诊日，请准时到达医院。");
+    }
+    
+    /**
+     * 发送单个通知
+     */
+    private void sendNotification(YishengyuyueEntity yishengyuyue, String type, String content) {
+        System.out.println("创建通知: " + type);
+        JiuzhentongzhiEntity notice = new JiuzhentongzhiEntity();
+        notice.setTongzhibianhao(String.valueOf(System.currentTimeMillis()));
+        notice.setYishengzhanghao(yishengyuyue.getYishengzhanghao());
+        notice.setDianhua(yishengyuyue.getDianhua());
+        notice.setJiuzhenshijian(yishengyuyue.getYuyueshijian());
+        notice.setTongzhishijian(new Date());
+        notice.setZhanghao(yishengyuyue.getZhanghao());
+        notice.setShouji(yishengyuyue.getShouji());
+        notice.setTongzhibeizhu(type + ": " + content);
+        
+        // 保存通知记录
+        jiuzhentongzhiService.insert(notice);
+        System.out.println("通知记录已保存，ID: " + notice.getId() + "，准备异步发送");
+        
+        // 异步发送通知
+        noticeService.sendNotice(notice);
     }
 
 

@@ -155,6 +155,10 @@
 							<i class="iconfont icon-dingdan3"></i>
 							签到
 						</el-button>
+						<el-button class="retry_btn" v-if="btnAuth('jiuzhentongzhi','修改')" type="warning" @click="retryClick(scope.row.id)">
+							<i class="iconfont icon-zhongzhi"></i>
+							重试
+						</el-button>
 					</template>
 				</el-table-column>
 			</el-table>
@@ -389,6 +393,22 @@
 			jiuzhenqiandaoFormModelRef.value.init(row.id,'cross','签到',row,'jiuzhentongzhi',statusColumnName,tips,statusColumnValue)
 		})
     }
+	//重试发送通知
+	const retryClick = (id) => {
+		context.$http({
+			url: `${tableName}/retry`,
+			method: 'get',
+			params: { id: id }
+		}).then(res => {
+			if (res.data.code === 0) {
+				context?.$toolUtil.message('重试发送成功', 'success', () => {
+					getList()
+				})
+			} else {
+				context?.$toolUtil.message(res.data.msg, 'error')
+			}
+		})
+	}
 	//初始化
 	const init = () => {
 		getList()

@@ -76,17 +76,29 @@
 		}
 		ruleFormRef.value.validate((valid) => {
 			if (valid) {
-				let url = `${tableName.value}/update`
+				// 使用shBatch接口进行审核，触发通知发送
+				let url = `${tableName.value}/shBatch`
 				context?.$http({
 					url: url,
 					method: 'post',
-					data: approvalForm.value
+					data: [approvalForm.value.id],
+					params: {
+						sfsh: approvalForm.value.sfsh,
+						shhf: approvalForm.value.shhf
+					}
 				}).then(res => {
-
-					context?.$toolUtil.message('审核成功', 'success', obj => {
-						approvalVisible.value = false
-					})
-					emit('shChange',type,approvalForm.value)
+					// 检查响应结果
+					if (res.data && res.data.code === 0) {
+						context?.$toolUtil.message('审核成功', 'success', obj => {
+							approvalVisible.value = false
+						})
+						emit('shChange',type,approvalForm.value)
+					} else {
+						context?.$toolUtil.message(res.data?.msg || '审核失败', 'error')
+					}
+				}).catch(err => {
+					console.error('审核请求失败:', err)
+					context?.$toolUtil.message('审核请求失败，请检查网络连接', 'error')
 				})
 			}
 		})
